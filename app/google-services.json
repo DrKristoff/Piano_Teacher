@@ -1,0 +1,42 @@
+{
+  "project_info": {
+    "project_number": "908317299291",
+    "firebase_url": "https://piano-teacher-63d53.firebaseio.com",
+    "project_id": "piano-teacher-63d53",
+    "storage_bucket": "piano-teacher-63d53.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:908317299291:android:190350c5c72ddcf8",
+        "android_client_info": {
+          "package_name": "com.sidegigapps.pianoteacher"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "908317299291-1jof72dj08sb8babijnbtj5870fdipdt.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDIR5ZU779xQOPF_c2hLt4z894WV1IUmUM"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 1,
+          "other_platform_oauth_client": []
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
