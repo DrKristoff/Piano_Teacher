@@ -33,7 +33,6 @@
             android:name=".DemoActivity"
             android:label="@string/title_activity_demo_acitivity"
             android:theme="@style/AppTheme.NoActionBar" />
-        <activity android:name=".AbstractMidiActivity"></activity>
     </application>
 
 </manifest>

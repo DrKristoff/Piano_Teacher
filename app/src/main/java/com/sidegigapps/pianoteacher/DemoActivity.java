@@ -1,5 +1,6 @@
 package com.sidegigapps.pianoteacher;
 
+import android.app.FragmentManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -23,8 +24,6 @@ import android.support.annotation.NonNull;
 import android.support.annotation.RequiresApi;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
@@ -34,34 +33,36 @@ import android.widget.Toast;
 
 import java.io.IOException;
 
-public class DemoActivity extends AbstractMidiActivity {
+import jp.kshoji.driver.midi.activity.AbstractSingleMidiActivity;
+import jp.kshoji.driver.midi.device.MidiInputDevice;
+import jp.kshoji.driver.midi.device.MidiOutputDevice;
+import jp.kshoji.driver.midi.listener.OnMidiDeviceAttachedListener;
+import jp.kshoji.driver.midi.listener.OnMidiDeviceDetachedListener;
+import jp.kshoji.driver.midi.listener.OnMidiInputEventListener;
+
+
+public class DemoActivity extends AppCompatActivity implements OnMidiDeviceAttachedListener, OnMidiDeviceDetachedListener, OnMidiInputEventListener {
 
     MidiManager midiManager;
     MidiDevice midiDevice;
 
+    ArrayAdapter adapter;
+
+    DemoActivityFragment fragment;
+
+    public enum MidiStatus {CONNECTED, DISCONNECTED};
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_demo_acitivity);
+        setContentView(R.layout.activity_demo_activity);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
         showToast("DemoActivity OnCreate");
         UsbManager manager = (UsbManager)getSystemService(Context.USB_SERVICE);
 
-        PendingIntent mPermissionIntent = PendingIntent.getBroadcast(this, 0, new Intent(ACTION_USB_PERMISSION), 0);
-        IntentFilter filter = new IntentFilter(ACTION_USB_PERMISSION);
-        registerReceiver(mUsbReceiver, filter);
-
-        try {
-            // Perform the operation associated with our pendingIntent
-            mPermissionIntent.send();
-            showToast("permission intent sent");
-        } catch (PendingIntent.CanceledException e) {
-            e.printStackTrace();
-        }
 
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
@@ -72,9 +73,18 @@ public class DemoActivity extends AbstractMidiActivity {
             }
         });
 
+        android.support.v4.app.FragmentManager fragmentManager = getSupportFragmentManager();
+        fragment = (DemoActivityFragment) fragmentManager.findFragmentById(R.id.fragment);
+        fragment.updateMidiStatus(MidiStatus.DISCONNECTED);
+
+        Toast.makeText(this,"Null? " + String.valueOf(fragment==null),Toast.LENGTH_SHORT).show();
+
+
     }
 
     private void setupMidiDevice(){
+
+        fragment.updateMidiStatus(MidiStatus.CONNECTED);
 
         midiManager = (MidiManager)getSystemService(Context.MIDI_SERVICE);
         showToast("midiManager null? " + String.valueOf(midiManager==null));
@@ -95,49 +105,23 @@ public class DemoActivity extends AbstractMidiActivity {
         String manufacturer = properties
                 .getString(MidiDeviceInfo.PROPERTY_MANUFACTURER);
 
-        midiManager.openDevice(info, new MidiManager.OnDeviceOpenedListener() {
-            @Override
-            public void onDeviceOpened(MidiDevice device) {
-                if (device == null) {
-                    Log.e("RCD", "could not open device ");
-                    showToast("could not open device");
-                } else {
-                    midiDevice = device;
-                    MidiOutputPort outputPort = device.openOutputPort(0);  //TODO:  controlling port selection
-                    outputPort.connect(new MyReceiver());
-                    showToast("device Opened!");
-                }
-            }}, new Handler(Looper.getMainLooper())
-        );
-
-    }
-
-    private static final String ACTION_USB_PERMISSION =
-            "com.android.example.USB_PERMISSION";
-
-    private final BroadcastReceiver mUsbReceiver = new BroadcastReceiver() {
-
-        public void onReceive(Context context, Intent intent) {
-            String action = intent.getAction();
-            if (ACTION_USB_PERMISSION.equals(action)) {
-
-                showToast("receiver captured broadcast  ");
-                synchronized (this) {
-                    UsbAccessory accessory = (UsbAccessory) intent.getParcelableExtra(UsbManager.EXTRA_ACCESSORY);
-
-                    if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
-                        if(accessory != null){
-                            //call method to set up accessory communication
-                            setupMidiDevice();
+/*        midiManager.openDevice(info, new MidiManager.OnDeviceOpenedListener() {
+                    @Override
+                    public void onDeviceOpened(MidiDevice device) {
+                        if (device == null) {
+                            Log.e("RCD", "could not open device ");
+                            showToast("could not open device");
+                        } else {
+                            midiDevice = device;
+                            MidiOutputPort outputPort = device.openOutputPort(0);  //TODO:  controlling port selection
+                            outputPort.connect(new MyReceiver());
+                            showToast("device Opened!");
                         }
                     }
-                    else {
-                        showToast("permission denied for accessory " + accessory);
-                    }
-                }
-            }
-        }
-    };
+                }, new Handler(Looper.getMainLooper())
+        );*/
+
+    }
 
     class MyReceiver extends MidiReceiver {
         public void onSend(byte[] data, int offset,
@@ -178,11 +162,18 @@ public class DemoActivity extends AbstractMidiActivity {
     @Override
     public void onDeviceAttached(@NonNull UsbDevice usbDevice) {
         showToast("onDeviceAttached");
+
     }
 
     @Override
     public void onMidiInputDeviceAttached(@NonNull MidiInputDevice midiInputDevice) {
         showToast("onMidiInputDeviceAttached");
+        setupMidiDevice();
+
+    }
+
+    @Override
+    public void onMidiOutputDeviceAttached(@NonNull MidiOutputDevice midiOutputDevice) {
 
     }
 
@@ -194,6 +185,12 @@ public class DemoActivity extends AbstractMidiActivity {
     @Override
     public void onMidiInputDeviceDetached(@NonNull MidiInputDevice midiInputDevice) {
         showToast("onMidiInputDeviceDetached");
+        fragment.updateMidiStatus(MidiStatus.DISCONNECTED);
+    }
+
+    @Override
+    public void onMidiOutputDeviceDetached(@NonNull MidiOutputDevice midiOutputDevice) {
+
     }
 
     @Override
@@ -222,12 +219,12 @@ public class DemoActivity extends AbstractMidiActivity {
     @Override
     public void onMidiNoteOff(@NonNull MidiInputDevice sender, int cable, int channel, int note, int velocity) {
 
-        showToast("onMidiNoteOff");
+        showToast("onMidiNoteOff: " +  String.valueOf(note));
     }
 
     @Override
     public void onMidiNoteOn(@NonNull MidiInputDevice sender, int cable, int channel, int note, int velocity) {
-        showToast("onMidiNoteOn");
+        showToast("onMidiNoteOn: " +  String.valueOf(note));
 
     }
 
@@ -325,6 +322,26 @@ public class DemoActivity extends AbstractMidiActivity {
     public void onMidiReset(@NonNull MidiInputDevice sender, int cable) {
         showToast("onMidiReset");
         midiInputEventHandler.sendMessage(Message.obtain(midiInputEventHandler, 0, "Reset from: " + sender.getUsbDevice().getDeviceName() + ", cable: " + cable));
+    }
+
+    @Override
+    public void onMidiRPNReceived(@NonNull MidiInputDevice sender, int cable, int channel, int function, int valueMSB, int valueLSB) {
+
+    }
+
+    @Override
+    public void onMidiNRPNReceived(@NonNull MidiInputDevice sender, int cable, int channel, int function, int valueMSB, int valueLSB) {
+
+    }
+
+    @Override
+    public void onMidiRPNReceived(@NonNull MidiInputDevice sender, int cable, int channel, int function, int value) {
+
+    }
+
+    @Override
+    public void onMidiNRPNReceived(@NonNull MidiInputDevice sender, int cable, int channel, int function, int value) {
+
     }
 
 }
